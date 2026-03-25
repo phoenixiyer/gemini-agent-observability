@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentSkill — Diagnostic Dashboard</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+        :root {
+            --bg-primary: #0a0f1c;
+            --bg-secondary: #111827;
+            --bg-card: #1a2234;
+            --bg-card-hover: #1e293b;
+            --border: #2a3550;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-yellow: #f59e0b;
+            --accent-orange: #f97316;
+            --accent-red: #ef4444;
+            --accent-purple: #8b5cf6;
+            --gradient-1: linear-gradient(135deg, #3b82f6, #06b6d4);
+            --gradient-2: linear-gradient(135deg, #8b5cf6, #ec4899);
+            --gradient-danger: linear-gradient(135deg, #ef4444, #f97316);
+            --gradient-success: linear-gradient(135deg, #10b981, #06b6d4);
+            --shadow-glow: 0 0 30px rgba(59, 130, 246, 0.15);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .app-header {
+            background: linear-gradient(180deg, rgba(59,130,246,0.08) 0%, transparent 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .app-header h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .app-header h1 .icon { font-size: 1.6rem; -webkit-text-fill-color: initial; }
+
+        .header-actions { display: flex; gap: 0.75rem; }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .btn:hover { background: var(--bg-card-hover); border-color: var(--accent-blue); }
+
+        .btn-primary {
+            background: var(--gradient-1);
+            border: none;
+            color: white;
+        }
+
+        .btn-primary:hover { opacity: 0.9; box-shadow: var(--shadow-glow); }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem 2rem; }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 16px;
+            padding: 3rem;
+            text-align: center;
+            background: rgba(59, 130, 246, 0.03);
+            transition: all 0.3s;
+            cursor: pointer;
+            margin-bottom: 2rem;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.08);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .upload-area .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+        .upload-area h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.4rem; }
+        .upload-area p { color: var(--text-muted); font-size: 0.85rem; }
+
+        .upload-area input[type="file"] { display: none; }
+
+        /* Dashboard Grid */
+        .dashboard { display: none; }
+        .dashboard.active { display: block; }
+
+        /* Summary Cards Row */
+        .summary-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .summary-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+
+        .summary-card.severity-critical::before { background: var(--gradient-danger); }
+        .summary-card.severity-high::before { background: var(--accent-orange); }
+        .summary-card.severity-medium::before { background: var(--accent-yellow); }
+        .summary-card.severity-low::before { background: var(--accent-green); }
+        .summary-card.neutral::before { background: var(--gradient-1); }
+
+        .summary-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-glow);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .summary-card .label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.4rem;
+        }
+
+        .summary-card .value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1.2;
+        }
+
+        .summary-card .sub {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-top: 0.3rem;
+        }
+
+        /* Two Column Layout */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-header h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-body { padding: 1.25rem; }
+
+        /* PAF Gauge */
+        .paf-gauge-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1.5rem;
+        }
+
+        .paf-gauge {
+            width: 220px;
+            height: 120px;
+            position: relative;
+        }
+
+        .paf-gauge svg { width: 100%; height: 100%; }
+
+        .paf-gauge .gauge-value {
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+
+        .paf-gauge .gauge-value .number {
+            font-size: 2.2rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .paf-gauge .gauge-value .unit {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .paf-scale {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 220px;
+            margin-top: 0.75rem;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Findings Table */
+        .findings-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.85rem;
+        }
+
+        .findings-table th {
+            text-align: left;
+            padding: 0.65rem 0.85rem;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            background: rgba(0,0,0,0.2);
+        }
+
+        .findings-table td {
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid rgba(42, 53, 80, 0.5);
+            vertical-align: middle;
+        }
+
+        .findings-table tr:hover td { background: rgba(59, 130, 246, 0.04); }
+
+        /* Severity Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .badge-critical { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+        .badge-high { background: rgba(249,115,22,0.15); color: #fdba74; border: 1px solid rgba(249,115,22,0.3); }
+        .badge-medium { background: rgba(245,158,11,0.15); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+        .badge-low { background: rgba(16,185,129,0.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+        .badge-healthy { background: rgba(16,185,129,0.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+        .badge-degraded { background: rgba(245,158,11,0.15); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+        .badge-open { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+
+        /* MCP Status */
+        .mcp-server {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem;
+            border-bottom: 1px solid rgba(42, 53, 80, 0.5);
+        }
+
+        .mcp-server:last-child { border-bottom: none; }
+
+        .mcp-server .name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .mcp-server .stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+
+        .mcp-server .stats span { font-family: 'JetBrains Mono', monospace; }
+
+        /* Progress Bars */
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 0.4rem;
+        }
+
+        .progress-bar .fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.8s ease;
+        }
+
+        /* Cost Breakdown */
+        .cost-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid rgba(42, 53, 80, 0.4);
+        }
+
+        .cost-item:last-child { border-bottom: none; }
+
+        .cost-item .name {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .cost-item .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .cost-item .amount {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        /* PAF History Chart */
+        .chart-container { padding: 1rem; }
+
+        .chart-bar-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .chart-bar-label {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            width: 60px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .chart-bar-track {
+            flex: 1;
+            height: 24px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .chart-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            padding-left: 0.5rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            transition: width 0.8s ease;
+            min-width: 40px;
+        }
+
+        /* Config Section */
+        .config-block {
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 0.85rem;
+            margin-bottom: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            line-height: 1.7;
+            border: 1px solid rgba(42, 53, 80, 0.6);
+            overflow-x: auto;
+        }
+
+        .config-block .key { color: var(--accent-cyan); }
+        .config-block .val { color: var(--accent-yellow); }
+        .config-block .warn { color: var(--accent-red); font-weight: 600; }
+
+        /* Recommendations */
+        .rec-item {
+            padding: 0.85rem;
+            border-left: 3px solid var(--border);
+            margin-bottom: 0.75rem;
+            background: rgba(0,0,0,0.15);
+            border-radius: 0 8px 8px 0;
+        }
+
+        .rec-item.rec-critical { border-left-color: var(--accent-red); }
+        .rec-item.rec-high { border-left-color: var(--accent-orange); }
+        .rec-item.rec-medium { border-left-color: var(--accent-yellow); }
+
+        .rec-item h4 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+        }
+
+        .rec-item p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .rec-item .savings {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-green);
+            font-size: 0.78rem;
+            font-weight: 600;
+            margin-top: 0.3rem;
+        }
+
+        /* Sample Data Banner */
+        .sample-banner {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 10px;
+            padding: 0.75rem 1.25rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 0.85rem;
+        }
+
+        .sample-banner .icon { font-size: 1.1rem; }
+        .sample-banner a { color: var(--accent-purple); text-decoration: underline; cursor: pointer; }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-in { animation: fadeInUp 0.5s ease forwards; }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .pulse { animation: pulse 2s infinite; }
+    </style>
+</head>
+<body>
+    <header class="app-header">
+        <h1>
+            <span class="icon">🔬</span>
+            AgentSkill Diagnostic Dashboard
+        </h1>
+        <div class="header-actions">
+            <button class="btn" id="loadSampleBtn" onclick="loadSampleData()">
+                📊 Load Sample Data
+            </button>
+            <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                📁 Load Report JSON
+            </button>
+            <input type="file" id="fileInput" accept=".json" onchange="loadFile(event)">
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Upload Area (shown when no data loaded) -->
+        <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()"
+             ondragover="event.preventDefault(); this.classList.add('dragover')"
+             ondragleave="this.classList.remove('dragover')"
+             ondrop="event.preventDefault(); this.classList.remove('dragover'); handleDrop(event)">
+            <div class="icon">📊</div>
+            <h3>Drop your diagnostic report here</h3>
+            <p>Upload <code>gemini_diagnostic_report.json</code> or click to browse</p>
+            <p style="margin-top: 0.75rem; color: var(--accent-purple);">
+                Or click <strong>"Load Sample Data"</strong> above to explore the dashboard
+            </p>
+        </div>
+
+        <!-- Dashboard (hidden until data loaded) -->
+        <div class="dashboard" id="dashboard">
+            <div class="sample-banner" id="sampleBanner" style="display:none">
+                <span class="icon">🧪</span>
+                <span>Viewing <strong>sample data</strong> — This demonstrates what the dashboard looks like with real diagnostic output. <a onclick="document.getElementById('fileInput').click()">Load your own report</a> to see your real data.</span>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="summary-row" id="summaryCards"></div>
+
+            <!-- Main Grid -->
+            <div class="grid-2">
+                <!-- PAF Gauge -->
+                <div class="card animate-in">
+                    <div class="card-header">
+                        <h3>🎯 Prompt Amplification Factor</h3>
+                        <span id="pafTrend" class="badge"></span>
+                    </div>
+                    <div class="paf-gauge-container">
+                        <div class="paf-gauge">
+                            <svg viewBox="0 0 220 120">
+                                <defs>
+                                    <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stop-color="#10b981"/>
+                                        <stop offset="33%" stop-color="#f59e0b"/>
+                                        <stop offset="66%" stop-color="#f97316"/>
+                                        <stop offset="100%" stop-color="#ef4444"/>
+                                    </linearGradient>
+                                </defs>
+                                <path d="M 20 110 A 90 90 0 0 1 200 110" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="16" stroke-linecap="round"/>
+                                <path id="gaugeArc" d="M 20 110 A 90 90 0 0 1 200 110" fill="none" stroke="url(#gaugeGrad)" stroke-width="16" stroke-linecap="round" stroke-dasharray="0 283"/>
+                                <circle id="gaugeNeedle" cx="20" cy="110" r="6" fill="var(--text-primary)" style="filter: drop-shadow(0 0 6px rgba(255,255,255,0.3))"/>
+                            </svg>
+                            <div class="gauge-value">
+                                <div class="number" id="pafValue">—</div>
+                                <div class="unit">to 1</div>
+                            </div>
+                        </div>
+                        <div class="paf-scale">
+                            <span>1.0</span>
+                            <span>4.0</span>
+                            <span>8.0</span>
+                            <span>12+</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cost Breakdown -->
+                <div class="card animate-in">
+                    <div class="card-header">
+                        <h3>💰 Cost Breakdown</h3>
+                        <span id="totalCost" style="font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--accent-cyan);"></span>
+                    </div>
+                    <div class="card-body" id="costBreakdown"></div>
+                </div>
+            </div>
+
+            <!-- MCP + PAF History -->
+            <div class="grid-2">
+                <!-- MCP Health -->
+                <div class="card animate-in">
+                    <div class="card-header">
+                        <h3>🔌 MCP Server Health</h3>
+                    </div>
+                    <div id="mcpServers"></div>
+                </div>
+
+                <!-- PAF History -->
+                <div class="card animate-in">
+                    <div class="card-header">
+                        <h3>📈 PAF History</h3>
+                    </div>
+                    <div class="chart-container" id="pafHistory"></div>
+                </div>
+            </div>
+
+            <!-- Findings Table -->
+            <div class="card animate-in" style="margin-bottom: 1.5rem;">
+                <div class="card-header">
+                    <h3>🔍 Findings</h3>
+                    <span id="findingsCount" class="badge badge-medium"></span>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="findings-table" id="findingsTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Finding</th>
+                                <th>Severity</th>
+                                <th>Impact</th>
+                                <th>Recommendation</th>
+                            </tr>
+                        </thead>
+                        <tbody id="findingsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Recommendations -->
+            <div class="card animate-in">
+                <div class="card-header">
+                    <h3>💡 Optimization Recommendations</h3>
+                </div>
+                <div class="card-body" id="recommendations"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ====== SAMPLE DATA ======
+        const SAMPLE_DATA = {
+            "report_metadata": {
+                "generated_at": "2025-07-15T14:32:18Z",
+                "cli_version": "0.5.2",
+                "model": "gemini-3.0-flash"
+            },
+            "system_components": {
+                "extensions": [
+                    {"name": "gitlab-mcp", "type": "mcp", "status": "active"},
+                    {"name": "google-maps", "type": "mcp", "status": "active"},
+                    {"name": "jira-connector", "type": "mcp", "status": "active"}
+                ],
+                "skills": [
+                    {"name": "collect_diagnostics", "desc_length": 120},
+                    {"name": "forensic-audit", "desc_length": 185}
+                ]
+            },
+            "usage_stats": {
+                "input_tokens": 45230,
+                "output_tokens": 12890,
+                "total_requests": 31,
+                "model": "gemini-3.0-flash"
+            },
+            "forensic_analysis": {
+                "paf": 6.2,
+                "total_user_roles": 31,
+                "total_model_roles": 28,
+                "tool_calls": 15,
+                "estimated_real_prompts": 5,
+                "trend": "increasing",
+                "repeating_patterns": [
+                    {"pattern": "gitlab_mcp_get_project", "count": 6, "type": "MCP retry"}
+                ]
+            },
+            "mcp_circuit_breaker": [
+                {"server": "gitlab-mcp", "total": 18, "success": 9, "errors": 6, "timeouts": 3, "consecutive_failures": 4, "status": "degraded"},
+                {"server": "google-maps", "total": 5, "success": 5, "errors": 0, "timeouts": 0, "consecutive_failures": 0, "status": "healthy"},
+                {"server": "jira-connector", "total": 8, "success": 7, "errors": 1, "timeouts": 0, "consecutive_failures": 0, "status": "healthy"}
+            ],
+            "global_config": {
+                "settings": {
+                    "model": "gemini-3.0-flash",
+                    "experimental": {"enableAgents": true},
+                    "sandbox": "adaptive"
+                },
+                "gemini_md": {
+                    "char_count": 4218,
+                    "est_tokens": 1055,
+                    "bloated": true
+                }
+            },
+            "cost_estimate": {
+                "gross_cost": 0.0145,
+                "user_cost": 0.0023,
+                "agent_overhead": 0.0098,
+                "retry_waste": 0.0024,
+                "model": "gemini-3.0-flash",
+                "input_rate": 0.50,
+                "output_rate": 3.00
+            },
+            "paf_history": [
+                {"timestamp": "2025-07-14T09:00:00Z", "paf": 2.1},
+                {"timestamp": "2025-07-14T14:00:00Z", "paf": 2.8},
+                {"timestamp": "2025-07-14T18:00:00Z", "paf": 3.2},
+                {"timestamp": "2025-07-15T09:00:00Z", "paf": 3.5},
+                {"timestamp": "2025-07-15T10:15:00Z", "paf": 3.8},
+                {"timestamp": "2025-07-15T12:00:00Z", "paf": 4.5},
+                {"timestamp": "2025-07-15T14:32:00Z", "paf": 6.2}
+            ],
+            "findings": [
+                {"id": 1, "finding": "GitLab MCP server degraded — 4 consecutive failures", "severity": "high", "impact": "Retry storm consuming ~30% of tokens", "recommendation": "Disable gitlab-mcp or fix connection"},
+                {"id": 2, "finding": "Instruction bloat: GEMINI.md at 4,218 chars (~1,055 tokens)", "severity": "high", "impact": "~1,055 extra tokens per API call", "recommendation": "Reduce to < 3,000 chars"},
+                {"id": 3, "finding": "Experimental agents enabled", "severity": "medium", "impact": "2-5x PAF contribution", "recommendation": "Disable when not needed"},
+                {"id": 4, "finding": "PAF trend increasing over 4 hours", "severity": "medium", "impact": "Quota exhaustion risk", "recommendation": "Investigate MCP issues"},
+                {"id": 5, "finding": "No project-level GEMINI.md", "severity": "low", "impact": "May be missing project context", "recommendation": "Add project-specific instructions"}
+            ],
+            "recommendations": [
+                {"priority": "high", "action": "Disable or fix the gitlab-mcp extension", "savings": "~30% token reduction, ~$0.13/day"},
+                {"priority": "high", "action": "Reduce GEMINI.md from 4,218 to under 3,000 characters", "savings": "~255 tokens/prompt, ~$0.05/day"},
+                {"priority": "medium", "action": "Disable experimental.enableAgents for routine tasks", "savings": "PAF reduction from ~6x to ~2x"}
+            ]
+        };
+
+        // ====== RENDERING ======
+        function renderDashboard(data) {
+            document.getElementById('uploadArea').style.display = 'none';
+            document.getElementById('dashboard').classList.add('active');
+
+            renderSummaryCards(data);
+            renderPAFGauge(data.forensic_analysis?.paf || 1);
+            renderCostBreakdown(data.cost_estimate || {});
+            renderMCPServers(data.mcp_circuit_breaker || []);
+            renderPAFHistory(data.paf_history || []);
+            renderFindings(data.findings || []);
+            renderRecommendations(data.recommendations || []);
+
+            const trend = data.forensic_analysis?.trend || 'stable';
+            const trendEl = document.getElementById('pafTrend');
+            const trendMap = { increasing: ['📈 Increasing', 'badge-high'], decreasing: ['📉 Decreasing', 'badge-low'], stable: ['➡️ Stable', 'badge-medium'] };
+            const [text, cls] = trendMap[trend] || trendMap.stable;
+            trendEl.textContent = text;
+            trendEl.className = `badge ${cls}`;
+        }
+
+        function renderSummaryCards(data) {
+            const paf = data.forensic_analysis?.paf || 1;
+            const severity = paf > 8 ? 'critical' : paf > 4 ? 'high' : paf > 2 ? 'medium' : 'low';
+            const severityLabel = severity.charAt(0).toUpperCase() + severity.slice(1);
+            const cost = data.cost_estimate?.gross_cost || 0;
+            const tokens = (data.usage_stats?.input_tokens || 0) + (data.usage_stats?.output_tokens || 0);
+            const mcpHealthy = (data.mcp_circuit_breaker || []).filter(s => s.status === 'healthy').length;
+            const mcpTotal = (data.mcp_circuit_breaker || []).length;
+            const findings = (data.findings || []).filter(f => f.severity === 'critical' || f.severity === 'high').length;
+
+            document.getElementById('summaryCards').innerHTML = `
+                <div class="summary-card severity-${severity}">
+                    <div class="label">Overall Severity</div>
+                    <div class="value" style="color: var(--accent-${severity === 'critical' ? 'red' : severity === 'high' ? 'orange' : severity === 'medium' ? 'yellow' : 'green'})">${severityLabel}</div>
+                    <div class="sub">PAF ${paf}:1</div>
+                </div>
+                <div class="summary-card neutral">
+                    <div class="label">Session Cost</div>
+                    <div class="value" style="color: var(--accent-cyan)">$${cost.toFixed(4)}</div>
+                    <div class="sub">${data.usage_stats?.model || 'Unknown model'}</div>
+                </div>
+                <div class="summary-card neutral">
+                    <div class="label">Total Tokens</div>
+                    <div class="value" style="color: var(--accent-purple)">${tokens.toLocaleString()}</div>
+                    <div class="sub">${data.usage_stats?.total_requests || 0} requests</div>
+                </div>
+                <div class="summary-card ${mcpHealthy < mcpTotal ? 'severity-medium' : 'severity-low'}">
+                    <div class="label">MCP Health</div>
+                    <div class="value" style="color: var(--accent-${mcpHealthy < mcpTotal ? 'yellow' : 'green'})">${mcpHealthy}/${mcpTotal}</div>
+                    <div class="sub">Servers healthy</div>
+                </div>
+                <div class="summary-card ${findings > 0 ? 'severity-high' : 'severity-low'}">
+                    <div class="label">Critical/High Findings</div>
+                    <div class="value" style="color: var(--accent-${findings > 0 ? 'orange' : 'green'})">${findings}</div>
+                    <div class="sub">${(data.findings || []).length} total findings</div>
+                </div>
+            `;
+        }
+
+        function renderPAFGauge(paf) {
+            const maxPAF = 12;
+            const clampedPAF = Math.min(paf, maxPAF);
+            const ratio = clampedPAF / maxPAF;
+            const arcLength = 283;
+            const dashLength = ratio * arcLength;
+
+            document.getElementById('gaugeArc').setAttribute('stroke-dasharray', `${dashLength} ${arcLength}`);
+            document.getElementById('pafValue').textContent = paf.toFixed(1);
+
+            const color = paf > 8 ? 'var(--accent-red)' : paf > 4 ? 'var(--accent-orange)' : paf > 2 ? 'var(--accent-yellow)' : 'var(--accent-green)';
+            document.getElementById('pafValue').style.color = color;
+
+            // Position needle
+            const angle = Math.PI - (ratio * Math.PI);
+            const cx = 110 + 90 * Math.cos(angle);
+            const cy = 110 - 90 * Math.sin(angle);
+            const needle = document.getElementById('gaugeNeedle');
+            needle.setAttribute('cx', cx);
+            needle.setAttribute('cy', cy);
+            needle.style.fill = color;
+        }
+
+        function renderCostBreakdown(cost) {
+            const container = document.getElementById('costBreakdown');
+            const total = cost.gross_cost || 0;
+            document.getElementById('totalCost').textContent = `$${total.toFixed(4)}`;
+
+            const items = [
+                { name: 'Your Prompts', amount: cost.user_cost || 0, color: 'var(--accent-green)' },
+                { name: 'Agent Overhead', amount: cost.agent_overhead || 0, color: 'var(--accent-orange)' },
+                { name: 'Retry Waste', amount: cost.retry_waste || 0, color: 'var(--accent-red)' }
+            ];
+
+            container.innerHTML = items.map(item => {
+                const pct = total > 0 ? ((item.amount / total) * 100).toFixed(0) : 0;
+                return `
+                    <div class="cost-item">
+                        <div class="name">
+                            <span class="dot" style="background: ${item.color}"></span>
+                            ${item.name} <span style="color: var(--text-muted); font-size: 0.75rem;">(${pct}%)</span>
+                        </div>
+                        <div class="amount" style="color: ${item.color}">$${item.amount.toFixed(4)}</div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="fill" style="width: ${pct}%; background: ${item.color}"></div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderMCPServers(servers) {
+            const container = document.getElementById('mcpServers');
+            container.innerHTML = servers.map(s => {
+                const uptime = s.total > 0 ? ((s.success / s.total) * 100).toFixed(0) : 100;
+                const statusMap = { healthy: ['✅', 'badge-healthy', 'HEALTHY'], degraded: ['⚠️', 'badge-degraded', 'DEGRADED'], open: ['🔴', 'badge-open', 'TRIPPED'] };
+                const [icon, badgeCls, label] = statusMap[s.status] || statusMap.healthy;
+                return `
+                    <div class="mcp-server">
+                        <div>
+                            <div class="name">${icon} ${s.server}</div>
+                            <div class="progress-bar" style="width: 120px; margin-top: 0.35rem;">
+                                <div class="fill" style="width: ${uptime}%; background: ${uptime > 90 ? 'var(--accent-green)' : uptime > 70 ? 'var(--accent-yellow)' : 'var(--accent-red)'}"></div>
+                            </div>
+                        </div>
+                        <div class="stats">
+                            <span>${s.success}✓</span>
+                            <span style="color: ${s.errors > 0 ? 'var(--accent-red)' : 'inherit'}">${s.errors}✗</span>
+                            <span>${uptime}%</span>
+                            <span class="badge ${badgeCls}">${label}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderPAFHistory(history) {
+            const container = document.getElementById('pafHistory');
+            const maxPAF = Math.max(...history.map(h => h.paf), 8);
+
+            container.innerHTML = history.map(h => {
+                const pct = (h.paf / maxPAF) * 100;
+                const ts = new Date(h.timestamp);
+                const label = `${ts.getMonth()+1}/${ts.getDate()} ${ts.getHours()}:${String(ts.getMinutes()).padStart(2, '0')}`;
+                const color = h.paf > 8 ? 'var(--accent-red)' : h.paf > 4 ? 'var(--accent-orange)' : h.paf > 2 ? 'var(--accent-yellow)' : 'var(--accent-green)';
+                return `
+                    <div class="chart-bar-row">
+                        <div class="chart-bar-label">${label}</div>
+                        <div class="chart-bar-track">
+                            <div class="chart-bar-fill" style="width: ${pct}%; background: ${color}">${h.paf.toFixed(1)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderFindings(findings) {
+            const body = document.getElementById('findingsBody');
+            const critHigh = findings.filter(f => f.severity === 'critical' || f.severity === 'high').length;
+            document.getElementById('findingsCount').textContent = `${findings.length} findings, ${critHigh} critical/high`;
+
+            body.innerHTML = findings.map(f => {
+                const severityMap = { critical: '🔴', high: '🟠', medium: '🟡', low: '🟢' };
+                return `
+                    <tr>
+                        <td style="color: var(--text-muted)">${f.id}</td>
+                        <td>${f.finding}</td>
+                        <td><span class="badge badge-${f.severity}">${severityMap[f.severity] || ''} ${f.severity}</span></td>
+                        <td style="color: var(--text-secondary); font-size: 0.8rem;">${f.impact}</td>
+                        <td style="font-size: 0.8rem;">${f.recommendation}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderRecommendations(recs) {
+            const container = document.getElementById('recommendations');
+            container.innerHTML = recs.map(r => `
+                <div class="rec-item rec-${r.priority}">
+                    <h4><span class="badge badge-${r.priority}">${r.priority}</span> ${r.action}</h4>
+                    ${r.savings ? `<div class="savings">💰 Est. savings: ${r.savings}</div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        // ====== FILE HANDLING ======
+        function loadFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            document.getElementById('sampleBanner').style.display = 'none';
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    renderDashboard(data);
+                } catch (err) {
+                    alert('Error parsing JSON: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function handleDrop(event) {
+            const file = event.dataTransfer.files[0];
+            if (!file) return;
+            document.getElementById('sampleBanner').style.display = 'none';
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    renderDashboard(data);
+                } catch (err) {
+                    alert('Error parsing JSON: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function loadSampleData() {
+            document.getElementById('sampleBanner').style.display = 'flex';
+            renderDashboard(SAMPLE_DATA);
+        }
+    </script>
+</body>
+</html>
