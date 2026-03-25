@@ -155,6 +155,6 @@ Based on observed patterns:
 
 **Token cost ≠ Prompt count.**
 
-Observability into the *agent layer* — not just the model layer — is the next critical capability for anyone running agentic AI in production. The PAF is your primary metric for understanding the true cost of your AI agent usage.
+Observability into the *agent layer* : not just the model layer , is the next critical capability for anyone running agentic AI in production. The PAF is your primary metric for understanding the true cost of your AI agent usage.
 
 Use the AgentSkill toolkit to measure, monitor, and manage your PAF.
