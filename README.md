@@ -46,13 +46,13 @@
 
 ## Skills in Detail
 
-### 🔍 `collect-diagnostics`
+### `collect-diagnostics`
 A lightweight diagnostic data collector for support escalations.
 - Captures CLI version, extensions, skills, configs, and env vars
 - Auto-redacts API keys, tokens, and sensitive data
 - Outputs both human-readable `.txt` and structured `.json`
 
-### 🔬 `forensic-audit`
+### `forensic-audit`
 The flagship deep-state diagnostic skill.
 - **PAF Calculation**: Measures hidden backend prompts vs your actual inputs
 - **MCP Circuit Breaker**: Detects retry storms per server (not just health pings)
@@ -61,21 +61,21 @@ The flagship deep-state diagnostic skill.
 - **Enhanced Redaction**: Masks API keys, emails, tokens, private keys, and file paths
 - **Dual Output**: Generates both Markdown report and structured JSON for the dashboard
 
-### 💰 `cost-estimator`
+### `cost-estimator`
 Maps token consumption to actual dollar costs.
 - Applies published Gemini pricing tiers (3.0/3.1 and 2.5)
 - Breaks down cost: **your prompts** vs **agent overhead** vs **retry waste**
 - Calculates cost per PAF-adjusted prompt
 - Provides optimization recommendations with estimated monthly savings
 
-### ⚙️ `config-optimizer`
+### `config-optimizer`
 Proactive configuration analysis before issues occur.
 - **Instruction Bloat Score**: Measures all GEMINI.md files and skill descriptions
 - **Token Budget Calculator**: Shows per-prompt overhead in tokens and dollars
 - **Settings Risk Matrix**: Flags dangerous experimental features
 - **Extension Audit**: Identifies unused or conflicting extensions
 
-### 🐕 `watchdog`
+### `watchdog`
 Real-time monitoring for active sessions.
 - **Agent Loop Detection**: Identifies repeating prompt patterns
 - **PAF Trend Analysis**: Shows PAF across multiple time windows (10/50/200 entries)
